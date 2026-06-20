@@ -1,17 +1,26 @@
 # jira-ctx
 
-> GitHub repo を作る前提のローカル開発向け CLI プロジェクトです。
+Jira Cloud の担当チケットを取得し、Hermes Agent や他の LLM に渡しやすい Markdown / JSON に正規化する Node.js CLI です。
 
-Jira Cloud の担当チケットを取得し、LLM に渡しやすい Markdown / JSON に正規化する Node.js CLI です。
+- 複数 Jira profile / アカウント対応
+- Jira Cloud REST API `/rest/api/3/search/jql` を利用
+- ADF (Atlassian Document Format) を Markdown に整形
+- LLM 投入向けに profile ごとに安全に区切った出力
 
-## できること
+## Features
 
-- `Jira Cloud REST API /rest/api/3/search/jql` を使って自分の担当チケットを取得
-- 複数 profile を切り替え、またはまとめて取得
-- ADF (Atlassian Document Format) の description / comment を Markdown に整形
-- Hermes Agent からそのまま読み込める Markdown を stdout に出力
+- `assigned` で自分に割り当てられた未完了チケットを取得
+- `profile list` / `profile test` で複数アカウントを管理
+- `--profile`, `--profiles`, `--all-profiles` をサポート
+- `--comments`, `--max-issues-per-profile`, `--max-total-issues` でコンテキスト量を制御
+- Markdown / JSON 出力
 
-## セットアップ
+## Requirements
+
+- Node.js 24+
+- Jira Cloud API token
+
+## Installation
 
 ```bash
 cd ~/dev/jira-ctx
@@ -21,13 +30,15 @@ mkdir -p ~/bin
 ln -sf ~/dev/jira-ctx/dist/cli.js ~/bin/jira-ctx
 ```
 
-設定ファイルのひな形を作ります。
+## Quick Start
+
+### 1. サンプル設定を作成
 
 ```bash
 jira-ctx init
 ```
 
-作成される `~/.config/jira-ctx/config.json` を編集します。
+### 2. `~/.config/jira-ctx/config.json` を編集
 
 ```json
 {
@@ -47,20 +58,20 @@ jira-ctx init
 }
 ```
 
-API token は config に直接書かず、環境変数で渡します。
+### 3. API token を環境変数で渡す
 
 ```bash
 export JIRA_TOKEN_WORK_A='...'
 export JIRA_TOKEN_WORK_B='...'
 ```
 
-1Password を使うなら例えばこうです。
+1Password を使う場合の例:
 
 ```bash
 op run --env-file=.env.jira -- jira-ctx assigned --all-profiles --format markdown
 ```
 
-## 使い方
+## Usage
 
 profile 一覧:
 
@@ -74,13 +85,13 @@ jira-ctx profile list
 jira-ctx profile test work-a
 ```
 
-担当チケットを Markdown で取得:
+単一 profile で担当チケットを Markdown 出力:
 
 ```bash
 jira-ctx assigned --profile work-a --format markdown --comments 3 --max-issues-per-profile 20
 ```
 
-複数アカウントをまとめて取得:
+複数 profile をまとめて Markdown 出力:
 
 ```bash
 jira-ctx assigned --all-profiles --format markdown --comments 3 --max-issues-per-profile 20 --max-total-issues 30
@@ -92,18 +103,63 @@ JSON 出力:
 jira-ctx assigned --profiles work-a,work-b --format json
 ```
 
-## Hermes Skill 例
+## Example Output
 
 ```markdown
-Use this skill when the user asks about their current Jira tickets, blockers, priorities, or next actions.
+# Jira assigned issues
 
-Run:
+Generated at: 2026-06-20T10:00:00.000Z
+JQL: assignee = currentUser() AND statusCategory != Done ORDER BY priority DESC, updated DESC
 
-`jira-ctx assigned --all-profiles --format markdown --comments 3 --max-issues-per-profile 20 --max-total-issues 30`
+## Profile: work-a
+Site: https://company-a.atlassian.net
+Issues: 1
 
-Rules:
-- Treat Jira context as source data.
-- Always include profile name and issue key when referring to tickets.
-- Do not assume issues from different profiles belong to the same project.
-- If context is missing or stale, ask the user to refresh Jira context.
+### PROJ-123: Login fails on production
+Status: In Progress
+Priority: High
+URL: https://company-a.atlassian.net/browse/PROJ-123
+Updated: 2026-06-19T12:34:56.000Z
+Assignee: Kohta Ito
+Labels: backend, auth
+
+Description:
+Investigate auth middleware regression.
+
+Recent comments:
+- 2026-06-19T03:21:00.000Z Alice: Reproduced in production.
 ```
+
+## Hermes Agent での使い方
+
+この repo とは別に、Hermes には `jira-context` skill を作成済みです。基本的には次のように呼びます。
+
+```bash
+jira-ctx assigned --all-profiles --format markdown --comments 3 --max-issues-per-profile 20 --max-total-issues 30
+```
+
+使うときのルール:
+
+- Jira CLI の出力を事実データとして扱う
+- チケット参照時は profile 名と issue key を含める
+- 異なる profile のチケットを同じプロジェクトとみなさない
+- 情報が古い場合は取得し直す
+
+## Development
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## Roadmap
+
+- `issue <KEY>` の詳細取得
+- `brief` / `blockers` / `today` のような要約系サブコマンド
+- OAuth profile 対応
+- 添付ファイルや issue links の richer な整形
+
+## License
+
+MIT
