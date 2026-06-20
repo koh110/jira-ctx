@@ -1,5 +1,7 @@
 # jira-ctx
 
+[![CI](https://github.com/koh110/jira-ctx/actions/workflows/ci.yml/badge.svg)](https://github.com/koh110/jira-ctx/actions/workflows/ci.yml)
+
 Jira Cloud の担当チケットを取得し、Hermes Agent や他の LLM に渡しやすい Markdown / JSON に正規化する Node.js CLI です。
 
 - 複数 Jira profile / アカウント対応
